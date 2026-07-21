@@ -1,8 +1,9 @@
 -- ============================================================
--- 講義室予約システム schema.sql（班で1つに統一して共有する）
---   ・主キーは テーブル名_id + AUTO_INCREMENT
+-- 座席確保（講義室予約）schema.sql  ※班で1つに統一して共有する
+--   ・主キーは テーブル名_id + AUTO_INCREMENT（students は自然キー）
 --   ・日付は DATE、時刻は TIME、作成日時は DATETIME
 --   ・予約⇔時限の多対多は中間テーブル reservation_periods に分解
+--   ・利用者（学生）は students マスタに登録（ホーム画面②で使用）
 -- ============================================================
 
 -- 作り直せるように 子→親 の順で削除
@@ -11,6 +12,14 @@ DROP TABLE IF EXISTS reservations;
 DROP TABLE IF EXISTS reservation_statuses;
 DROP TABLE IF EXISTS periods;
 DROP TABLE IF EXISTS rooms;
+DROP TABLE IF EXISTS students;
+
+-- 学生（マスタ：ホーム画面②で登録・選択）
+CREATE TABLE students (
+    student_no VARCHAR(20) PRIMARY KEY,              -- 学籍番号（不変で一意な自然キー）
+    name       VARCHAR(50) NOT NULL,                 -- 氏名
+    pin        VARCHAR(10) NOT NULL DEFAULT '0000'   -- 簡易暗証番号（任意のログイン用）
+);
 
 -- 講義室（マスタ）
 CREATE TABLE rooms (
@@ -40,13 +49,14 @@ CREATE TABLE reservations (
     reservation_id INT          AUTO_INCREMENT PRIMARY KEY,          -- 予約ID
     room_id        INT          NOT NULL,                           -- どの講義室か(FK)
     reserved_date  DATE         NOT NULL,                           -- 予約日
-    reserver_name  VARCHAR(50)  NOT NULL,                           -- 予約者名
-    student_no     VARCHAR(20)  NOT NULL,                           -- 学籍番号
+    student_no     VARCHAR(20)  NOT NULL,                           -- 予約した学生(FK→students)
+    reserver_name  VARCHAR(50)  NOT NULL,                           -- 予約時の氏名（表示用の控え）
     status_id      INT          NOT NULL,                           -- 予約状態(FK)
     purpose        VARCHAR(100),                                    -- 利用目的
     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 作成日時
-    FOREIGN KEY (room_id)   REFERENCES rooms(room_id),
-    FOREIGN KEY (status_id) REFERENCES reservation_statuses(status_id)
+    FOREIGN KEY (room_id)    REFERENCES rooms(room_id),
+    FOREIGN KEY (student_no) REFERENCES students(student_no),
+    FOREIGN KEY (status_id)  REFERENCES reservation_statuses(status_id)
 );
 
 -- 予約コマ（中間テーブル：予約⇔時限の多対多を分解）
@@ -61,6 +71,11 @@ CREATE TABLE reservation_periods (
 -- ============================================================
 -- 初期データ（親→子 の順で入れる）
 -- ============================================================
+INSERT INTO students (student_no, name, pin) VALUES
+    ('1244811075', '陳志遠',   '1111'),
+    ('1244811033', '高橋聡太', '2222'),
+    ('1244810000', '田中太郎', '3333');
+
 INSERT INTO rooms (room_name, building, floor, capacity) VALUES
     ('3101', 'さつき', 1, 200),
     ('3102', 'さつき', 1, 60),
@@ -81,9 +96,9 @@ INSERT INTO periods (period_name, start_time, end_time) VALUES
 INSERT INTO reservation_statuses (status_name) VALUES
     ('予約済'), ('利用済'), ('キャンセル');
 
-INSERT INTO reservations (room_id, reserved_date, reserver_name, student_no, status_id, purpose) VALUES
-    (1, '2026-07-10', '陳志遠',   '1244811075', 1, 'ゼミの打ち合わせ'),
-    (3, '2026-07-11', '田中太郎', '1244810000', 1, '勉強会');
+INSERT INTO reservations (room_id, reserved_date, student_no, reserver_name, status_id, purpose) VALUES
+    (1, '2026-07-10', '1244811075', '陳志遠',   1, 'ゼミの打ち合わせ'),
+    (3, '2026-07-11', '1244810000', '田中太郎', 1, '勉強会');
 
 -- 予約1は1限と2限の連続、予約2は3限
 INSERT INTO reservation_periods (reservation_id, period_id) VALUES
