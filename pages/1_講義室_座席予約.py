@@ -11,13 +11,15 @@ import uuid
 import streamlit as st
 
 from db import get_connection
+from i18n import apply_font_size, is_english, t
 
 
 st.set_page_config(
-    page_title="講義室の席予約",
+    page_title=t("講義室の席予約", "Seat Reservation"),
     page_icon="💺",
     layout="wide",
 )
+apply_font_size()
 
 # 講義室名: (座席の合計数, 横1行に並べる席数)
 ROOMS = {
@@ -242,12 +244,15 @@ if "flash_message" not in st.session_state:
     st.session_state.flash_message = None
 
 
-st.title("💺 講義室の席予約")
-st.caption("1人から最大3人まで、人数分の空席を選択して一度に予約できます。")
+st.title(t("💺 講義室の席予約", "💺 Seat Reservation"))
+st.caption(t("1人から最大3人まで、人数分の空席を選択して一度に予約できます。", "You can reserve seats for 1 to 3 people at once."))
 
 st.warning(
-    "このページは画面だけで動作します。予約情報はブラウザを開いている間だけ保存され、"
-    "Streamlitを終了すると消えます。"
+    t(
+        "このページは画面だけで動作します。予約情報はブラウザを開いている間だけ保存され、"
+        "Streamlitを終了すると消えます。",
+        "This page uses on-screen temporary state. Session-based seat status is cleared when Streamlit stops.",
+    )
 )
 
 if st.session_state.flash_message:
@@ -258,32 +263,32 @@ if st.session_state.flash_message:
 # -----------------------------
 # 1. 予約条件
 # -----------------------------
-st.subheader("1. 講義室・日付・時限・人数を選択")
+st.subheader(t("1. 講義室・日付・時限・人数を選択", "1. Choose Room, Date, Period, and People"))
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    selected_room = st.selectbox("講義室", list(ROOMS.keys()))
+    selected_room = st.selectbox(t("講義室", "Room"), list(ROOMS.keys()))
 
 with col2:
     selected_date = st.date_input(
-        "予約日",
+        t("予約日", "Reservation Date"),
         value=date.today(),
         min_value=date.today(),
     )
 
 with col3:
     selected_period = st.selectbox(
-        "時限",
+        t("時限", "Period"),
         list(PERIODS.keys()),
         format_func=lambda name: f"{name}（{PERIODS[name]}）",
     )
 
 with col4:
     number_of_people = st.selectbox(
-        "予約人数",
+        t("予約人数", "Number of People"),
         options=[1, 2, 3],
-        format_func=lambda number: f"{number}人",
+        format_func=(lambda number: f"{number} people") if is_english() else (lambda number: f"{number}人"),
     )
 
 current_condition = (
@@ -305,10 +310,13 @@ if st.session_state.last_condition != current_condition:
 capacity, seats_per_row = ROOMS[selected_room]
 seat_rows = create_seat_names(capacity, seats_per_row)
 
-st.subheader(f"2. 空いている席を{number_of_people}席選択")
+if is_english():
+    st.subheader(f"2. Select {number_of_people} available seat(s)")
+else:
+    st.subheader(f"2. 空いている席を{number_of_people}席選択")
 
 st.markdown(
-    """
+    f"""
     <div style="
         text-align:center;
         border:2px solid #888;
@@ -317,21 +325,25 @@ st.markdown(
         margin:8px 0 20px 0;
         font-weight:bold;
     ">
-        教卓・スクリーン
+        {t("教卓・スクリーン", "Teacher Desk / Screen")}
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 legend1, legend2, legend3 = st.columns(3)
-legend1.success("🟩 空席")
-legend2.warning("🟨 選択中")
-legend3.error("🟥 予約済み")
+legend1.success(t("🟩 空席", "🟩 Available"))
+legend2.warning(t("🟨 選択中", "🟨 Selected"))
+legend3.error(t("🟥 予約済み", "🟥 Reserved"))
 
 selected_count = len(st.session_state.selected_seats)
 st.progress(
     selected_count / number_of_people,
-    text=f"選択済み：{selected_count} / {number_of_people}席",
+    text=(
+        f"Selected: {selected_count} / {number_of_people}"
+        if is_english()
+        else f"選択済み：{selected_count} / {number_of_people}席"
+    ),
 )
 
 for row in seat_rows:
@@ -368,7 +380,11 @@ for row in seat_rows:
                     st.session_state.selected_seats.append(seat_name)
                 else:
                     st.toast(
-                        f"選択できるのは{number_of_people}席までです。",
+                        (
+                            f"You can select up to {number_of_people} seat(s)."
+                            if is_english()
+                            else f"選択できるのは{number_of_people}席までです。"
+                        ),
                         icon="⚠️",
                     )
 
@@ -383,13 +399,13 @@ seat_info_col, clear_col = st.columns([4, 1])
 
 with seat_info_col:
     if selected_seats:
-        st.info("選択中の席：" + "、".join(selected_seats))
+        st.info(t("選択中の席：", "Selected seats: ") + "、".join(selected_seats))
     else:
-        st.info("まだ席を選択していません。")
+        st.info(t("まだ席を選択していません。", "No seats selected yet."))
 
 with clear_col:
     if st.button(
-        "選択を解除",
+        t("選択を解除", "Clear selection"),
         disabled=not selected_seats,
         use_container_width=True,
     ):
@@ -400,25 +416,25 @@ with clear_col:
 # -----------------------------
 # 3. 代表者情報
 # -----------------------------
-st.subheader("3. 代表者情報を入力")
+st.subheader(t("3. 代表者情報を入力", "3. Enter Representative Info"))
 
 form_col1, form_col2 = st.columns(2)
 
 with form_col1:
     reserver_name = st.text_input(
-        "代表者氏名",
-        placeholder="例：山田 太郎",
+        t("代表者氏名", "Representative Name"),
+        placeholder=t("例：山田 太郎", "Example: Taro Yamada"),
     )
 
     student_number = st.text_input(
-        "代表者の学籍番号",
-        placeholder="例：A1234567",
+        t("代表者の学籍番号", "Representative Student Number"),
+        placeholder=t("例：A1234567", "Example: A1234567"),
     )
 
 with form_col2:
     purpose = st.text_area(
-        "利用目的",
-        placeholder="例：講義の受講、ゼミ、勉強会",
+        t("利用目的", "Purpose"),
+        placeholder=t("例：講義の受講、ゼミ、勉強会", "Example: Lecture, seminar, study group"),
         height=110,
     )
 
@@ -426,15 +442,21 @@ with form_col2:
 # -----------------------------
 # 4. 予約確認
 # -----------------------------
-st.subheader("4. 予約内容を確認")
+st.subheader(t("4. 予約内容を確認", "4. Confirm Reservation"))
 
-st.write(f"**講義室：** {selected_room}")
-st.write(f"**予約日：** {selected_date.strftime('%Y年%m月%d日')}")
-st.write(f"**時限：** {selected_period}（{PERIODS[selected_period]}）")
-st.write(f"**人数：** {number_of_people}人")
+st.write(f"**{t('講義室', 'Room')}：** {selected_room}")
+if is_english():
+    st.write(f"**{t('予約日', 'Reservation Date')}：** {selected_date.strftime('%Y-%m-%d')}")
+else:
+    st.write(f"**{t('予約日', 'Reservation Date')}：** {selected_date.strftime('%Y年%m月%d日')}")
+st.write(f"**{t('時限', 'Period')}：** {selected_period}（{PERIODS[selected_period]}）")
+if is_english():
+    st.write(f"**{t('人数', 'People')}：** {number_of_people}")
+else:
+    st.write(f"**{t('人数', 'People')}：** {number_of_people}人")
 st.write(
-    "**座席：** "
-    + ("、".join(selected_seats) if selected_seats else "未選択")
+    f"**{t('座席', 'Seats')}：** "
+    + ("、".join(selected_seats) if selected_seats else t("未選択", "Not selected"))
 )
 
 correct_seat_count = len(selected_seats) == number_of_people
@@ -448,13 +470,20 @@ required_fields_entered = all(
 can_reserve = correct_seat_count and required_fields_entered
 
 if not correct_seat_count:
-    st.info(f"{number_of_people}人分の席を選択してください。")
+    if is_english():
+        st.info(f"Please select {number_of_people} seat(s).")
+    else:
+        st.info(f"{number_of_people}人分の席を選択してください。")
 
 if not required_fields_entered:
-    st.info("代表者氏名・学籍番号・利用目的をすべて入力してください。")
+    st.info(t("代表者氏名・学籍番号・利用目的をすべて入力してください。", "Please fill in name, student number, and purpose."))
 
 if st.button(
-    f"{number_of_people}人分を予約する",
+    (
+        f"Reserve for {number_of_people} person(s)"
+        if is_english()
+        else f"{number_of_people}人分を予約する"
+    ),
     type="primary",
     disabled=not can_reserve,
     use_container_width=True,
@@ -477,7 +506,7 @@ if st.button(
 
     if duplicate_seats:
         st.error(
-            "次の席はすでに予約されています："
+            t("次の席はすでに予約されています：", "These seats are already reserved: ")
             + "、".join(duplicate_seats)
         )
     else:
@@ -493,7 +522,10 @@ if st.button(
                 purpose_text=purpose.strip(),
             )
         except Exception as error:
-            st.error(f"DBへの保存に失敗しました: {error}")
+            if is_english():
+                st.error(f"Failed to save to DB: {error}")
+            else:
+                st.error(f"DBへの保存に失敗しました: {error}")
         else:
             group_id = str(uuid.uuid4())
 
@@ -514,7 +546,11 @@ if st.button(
             reserved_seat_text = "、".join(selected_seats)
             st.session_state.selected_seats = []
             st.session_state.flash_message = (
-                f"{selected_room}教室の{reserved_seat_text}を予約しました。"
+                (
+                    f"Reserved {reserved_seat_text} in room {selected_room}."
+                    if is_english()
+                    else f"{selected_room}教室の{reserved_seat_text}を予約しました。"
+                )
             )
             st.rerun()
 

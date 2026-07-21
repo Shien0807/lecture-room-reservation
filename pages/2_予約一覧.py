@@ -5,6 +5,7 @@ from datetime import date
 import streamlit as st
 
 from db import get_connection
+from i18n import apply_font_size, is_english, t
 
 
 def fetch_room_names() -> list[str]:
@@ -86,10 +87,11 @@ def fetch_reservations(
         conn.close()
 
 
-st.set_page_config(page_title="予約一覧", page_icon="📋", layout="wide")
+st.set_page_config(page_title=t("予約一覧", "Reservation List"), page_icon="📋", layout="wide")
+apply_font_size()
 
-st.title("📋 予約一覧")
-st.caption("1_講義室_座席予約.py から保存された予約データを表示します。")
+st.title(t("📋 予約一覧", "📋 Reservation List"))
+st.caption(t("1_講義室_座席予約.py から保存された予約データを表示します。", "Shows reservations saved from 1_講義室_座席予約.py."))
 
 rooms = fetch_room_names()
 
@@ -97,24 +99,25 @@ filter_col1, filter_col2, filter_col3 = st.columns(3)
 
 with filter_col1:
     selected_room = st.selectbox(
-        "講義室",
-        options=["すべて"] + rooms,
+        t("講義室", "Room"),
+        options=[t("すべて", "All")] + rooms,
         index=0,
     )
 
 with filter_col2:
-    use_date_filter = st.checkbox("予約日で絞り込み")
-    selected_date = st.date_input("予約日", value=date.today(), disabled=not use_date_filter)
+    use_date_filter = st.checkbox(t("予約日で絞り込み", "Filter by Date"))
+    selected_date = st.date_input(t("予約日", "Reservation Date"), value=date.today(), disabled=not use_date_filter)
 
 with filter_col3:
     selected_period = st.selectbox(
-        "時限",
-        options=["すべて", "1限", "2限", "3限", "4限", "5限"],
+        t("時限", "Period"),
+        options=[t("すべて", "All"), "1限", "2限", "3限", "4限", "5限"],
         index=0,
     )
 
-room_filter = None if selected_room == "すべて" else selected_room
-period_filter = None if selected_period == "すべて" else selected_period
+all_label = t("すべて", "All")
+room_filter = None if selected_room == all_label else selected_room
+period_filter = None if selected_period == all_label else selected_period
 date_filter = selected_date if use_date_filter else None
 
 rows = fetch_reservations(
@@ -124,21 +127,24 @@ rows = fetch_reservations(
 )
 
 if not rows:
-    st.info("該当する予約データはありません。")
+    st.info(t("該当する予約データはありません。", "No reservation data matched."))
 else:
-    st.success(f"{len(rows)}件の予約が見つかりました。")
+    if is_english():
+        st.success(f"Found {len(rows)} reservations.")
+    else:
+        st.success(f"{len(rows)}件の予約が見つかりました。")
 
     table_rows = [
         {
-            "予約ID": row[0],
-            "講義室": row[1],
-            "予約日": row[2],
-            "時限": row[3] or "未設定",
-            "予約者": row[4],
-            "学籍番号": row[5],
-            "状態": row[6],
-            "利用目的": row[7],
-            "作成日時": row[8],
+            t("予約ID", "Reservation ID"): row[0],
+            t("講義室", "Room"): row[1],
+            t("予約日", "Reserved Date"): row[2],
+            t("時限", "Period"): row[3] or t("未設定", "Not set"),
+            t("予約者", "Reserver"): row[4],
+            t("学籍番号", "Student Number"): row[5],
+            t("状態", "Status"): row[6],
+            t("利用目的", "Purpose"): row[7],
+            t("作成日時", "Created At"): row[8],
         }
         for row in rows
     ]
